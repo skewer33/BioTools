@@ -36,12 +36,10 @@ def savefig(default_filename, default_rel_path=None, **default_savefig_kwargs):
 
             if save:
                 save_path = save_filename
-                print(f'{save_path=}')
                 if rel_path:
                     if not path.exists(rel_path):
                         makedirs(rel_path)
                     save_path = path.join(rel_path, save_filename)
-                    print(f'{save_path=}')
                 plt.savefig(save_path, **savefig_kwargs)
                 print(f"Plot saved to file: {save_path}")
             plt.show()
