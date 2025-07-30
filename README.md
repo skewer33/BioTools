@@ -24,7 +24,7 @@ from BioTools import gene2uniprotid, get_proteins_info, MITAB_parser, savefig
 - **wrappers**: Decorator function for saving matplotlib figures.
 
 ## Author
-Mokin Yakov - mokinyakov@mail.ru
+Yakov Mokin - mokinyakov@mail.ru
 
 ## License
 This project is licensed under the MIT License.
