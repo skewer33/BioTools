@@ -23,6 +23,38 @@ from BioTools import gene2uniprotid, get_proteins_info, MITAB_parser, savefig
 - **protein_annotation**: Asynchronous functions to retrieve protein information from UniProt and PDB APIs.
 - **wrappers**: Decorator function for saving matplotlib figures.
 
+## Testing
+Project contains basic unit tests in the `tests/` folder.
+
+Run tests with:
+
+```bash
+python run_tests.py
+```
+
+or directly:
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+### Live (internet) tests
+For tests that call real APIs, use:
+
+```bash
+python run_live_tests.py
+```
+
+Live tests are in `tests/integration/test_gene2uniprot_live.py`:
+- `PROBE_GENES`: genes for collecting current API mapping.
+- `EXPECTED_UIDS`: expected mapping you can fill after probing.
+
+Recommended flow:
+1. Run `python run_live_tests.py`.
+2. Check printed `gene -> UniProtID` mapping.
+3. Copy values into `EXPECTED_UIDS`.
+4. Re-run to get a strict regression check.
+
 ## Author
 Yakov Mokin - mokinyakov@mail.ru
 
