@@ -1,7 +1,13 @@
 import unittest
 import pandas as pd
+import asyncio
 
-from BioTools.protein_annotation import _parse_pdb_data, _parse_uniprot_data, protein_results_to_dataframe
+from BioTools.protein_annotation import (
+    _parse_pdb_data,
+    _parse_uniprot_data,
+    protein_results_to_dataframe,
+    get_proteins_info,
+)
 
 
 class TestProteinAnnotationParsers(unittest.TestCase):
@@ -63,6 +69,14 @@ class TestProteinAnnotationParsers(unittest.TestCase):
     def test_protein_results_to_dataframe_handles_empty_results(self):
         df = protein_results_to_dataframe([])
         self.assertTrue(df.empty)
+
+    def test_get_proteins_info_validates_max_concurrent(self):
+        with self.assertRaises(ValueError):
+            asyncio.run(get_proteins_info([], max_concurrent=0))
+
+    def test_get_proteins_info_validates_request_timeout(self):
+        with self.assertRaises(ValueError):
+            asyncio.run(get_proteins_info([], request_timeout=0))
 
 
 if __name__ == "__main__":
