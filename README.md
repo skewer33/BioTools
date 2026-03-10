@@ -17,6 +17,16 @@ After installation, you can import the package and use its functionalities as fo
 from BioTools import gene2uniprotid, get_proteins_info, MITAB_parser, savefig
 ```
 
+To get `pandas.DataFrame` directly from protein annotation:
+
+```python
+results_df, error_ids = await get_proteins_info(
+    ["P04637", "P00533"],
+    return_dataframe=True,
+    flatten_nested=True,
+)
+```
+
 ## Modules
 - **gene2uniprot**: Functions for querying UniProt IDs based on gene names.
 - **MITAB_parser**: Class for parsing MITAB files and extracting relevant information.

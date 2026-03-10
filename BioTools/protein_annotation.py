@@ -1,6 +1,7 @@
 import aiohttp
 import asyncio
 from tqdm.asyncio import tqdm
+import pandas as pd
 
 UNIPROT_API_URL = "https://www.ebi.ac.uk/proteins/api/proteins/"
 PDB_API_URL = "https://www.ebi.ac.uk/pdbe/api/mappings/best_structures/"
@@ -81,6 +82,47 @@ def _parse_pdb_data(data, uniprot_id):
             pdb_structures.append(entry.get("pdb_id"))
     return list(set(pdb_structures))
 
+
+def protein_results_to_dataframe(results, set_index=True, flatten_nested=True, list_sep=";"):
+    """
+    Convert results from get_proteins_info to a pandas DataFrame.
+
+    Parameters
+    ----------
+    results : list[dict]
+        List returned by get_proteins_info.
+    set_index : bool
+        If True and UniProtID exists, set it as DataFrame index.
+    flatten_nested : bool
+        If True, add convenient flat string columns for GO and PDB data.
+    list_sep : str
+        Separator for flattened list-like values.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Tabular representation of protein results.
+    """
+    df = pd.DataFrame(results)
+
+    if flatten_nested and not df.empty:
+        if "GO_terms" in df.columns:
+            df["GO_ids"] = df["GO_terms"].apply(
+                lambda x: list_sep.join(x.keys()) if isinstance(x, dict) and x else ""
+            )
+            df["GO_labels"] = df["GO_terms"].apply(
+                lambda x: list_sep.join(str(v) for v in x.values()) if isinstance(x, dict) and x else ""
+            )
+        if "PDB" in df.columns:
+            df["PDB_ids"] = df["PDB"].apply(
+                lambda x: list_sep.join(str(v) for v in x) if isinstance(x, list) and x else ""
+            )
+
+    if set_index and "UniProtID" in df.columns:
+        df = df.set_index("UniProtID", drop=False)
+
+    return df
+
 async def _get_protein_info(uniprot_id, session, error_ids):
     uniprot_data = await _get_uniprot_data(uniprot_id, session)
     if not uniprot_data:
@@ -105,7 +147,7 @@ async def _get_protein_info(uniprot_id, session, error_ids):
     
     return result
 
-async def get_proteins_info(uniprot_ids, max_concurrent=10):
+async def get_proteins_info(uniprot_ids, max_concurrent=10, return_dataframe=False, flatten_nested=True):
     """
     Asynchronously retrieves protein information for a list of UniProt IDs.
     This function queries the UniProt and PDB APIs for each UniProt ID provided, retrieves the corresponding protein information,
@@ -117,13 +159,17 @@ async def get_proteins_info(uniprot_ids, max_concurrent=10):
         A list of UniProt IDs to query.
     max_concurrent : int
         The maximum number of concurrent requests to the APIs. Default is 10.
+    return_dataframe : bool
+        If True, return pandas DataFrame instead of list of dictionaries.
+    flatten_nested : bool
+        Used only when return_dataframe=True. Adds flat GO/PDB columns.
         
     Returns
     -------
     tuple
         A tuple containing:
-        - results: list
-            A list of dictionaries where each dictionary contains the protein information for a UniProt ID.
+        - results: list or pandas.DataFrame
+            Protein information per UniProt ID.
         - error_ids: dict
             A dictionary where each key is a category of error and each value is a list of UniProt IDs that encountered that error.
     """
@@ -148,7 +194,10 @@ async def get_proteins_info(uniprot_ids, max_concurrent=10):
     
     valid_results = [res for res in results if res is not None]
     
-    print(f'{len(valid_results)} UniProtID were successfully processed')
-    print(f'{len(error_ids['UniProtID'])} UniProtID not found')
-    
+    print(f"{len(valid_results)} UniProtID were successfully processed")
+    print(f"{len(error_ids['UniProtID'])} UniProtID not found")
+
+    if return_dataframe:
+        return protein_results_to_dataframe(valid_results, flatten_nested=flatten_nested), error_ids
+
     return valid_results, error_ids
