@@ -241,30 +241,27 @@ async def get_proteins_info(
     async with aiohttp.ClientSession(connector=connector, timeout=timeout) as session:
 
         async def _bounded(uid):
-            async with semaphore:
-                return await _get_protein_info(
-                    uid,
-                    session,
-                    error_ids,
-                    per_request_retries=per_request_retries,
-                    per_request_retry_delay=per_request_retry_delay,
-                )
+            try:
+                async with semaphore:
+                    return await _get_protein_info(
+                        uid,
+                        session,
+                        error_ids,
+                        per_request_retries=per_request_retries,
+                        per_request_retry_delay=per_request_retry_delay,
+                    )
+            except Exception:
+                error_ids["UnhandledError"].append(uid)
+                return None
 
         tasks = [_bounded(uid) for uid in tqdm(uniprot_ids)]
         results = await tqdm.gather(
             *tasks,
             desc="Fetching protein data",
             unit="protein",
-            return_exceptions=True,
         )
 
-    valid_results = []
-    for uid, res in zip(uniprot_ids, results):
-        if isinstance(res, Exception):
-            error_ids["UnhandledError"].append(uid)
-            continue
-        if res is not None:
-            valid_results.append(res)
+    valid_results = [res for res in results if res is not None]
 
     print(f"{len(valid_results)} UniProtID were successfully processed")
     print(f"{len(error_ids['UniProtID'])} UniProtID not found")
