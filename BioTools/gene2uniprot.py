@@ -69,7 +69,13 @@ async def _async_request(genenames:list, taxid):
     
     return UniprotIDs, error_list
 
-async def gene2uniprotid(genenames:list, taxid = 9606, cycles = 2):
+
+async def gene2uniprotid(
+    genenames: list,
+    taxid: int = 9606,
+    max_cycle: int = 50,
+    retry_delay: float = 5.0,
+):
     """
     Retrieves UniProt IDs for a list of gene names.
 
@@ -82,31 +88,47 @@ async def gene2uniprotid(genenames:list, taxid = 9606, cycles = 2):
     genenames : list
         A list of gene names to query.
     taxid : int, optional
-        The taxonomic ID of the species. Default is 9606 (Homo sapiens).
-    cycles : int, optional
-        The number of times to retry the queryv if not all UniProt IDs were successfully retrieved. Default is 2.
+        Taxonomy ID (default 9606, human).
+    max_cycle : int, optional
+        Maximum number of cycles (including the first), default 50.
+    retry_delay : float, optional
+        Pause between cycles in seconds, default 5.0.
 
     Returns
     -------
-    tuple
-        A tuple containing:
-        - UniProtId_dict: dict
-            A dictionary where each key is a gene name and the value is its corresponding UniProt ID.
-        - error_genes: list
-            A list of gene names for which the query did not successfully retrieve a UniProt ID.
+    tuple[dict, list]
+        - UniProtId_dict: {gene: uniprot_id}
+        - error_genes: list of genes for which ID was not found.
     """
-    if cycles < 1:
-        raise ValueError("Number of cycles must be at least 1")
+    if max_cycle < 1:
+        raise ValueError("max_cycle must be at least 1")
+
+    cycle = 1
     UniProtId_dict, error_genes = await _async_request(genenames, taxid=taxid)
-    for i in range(cycles-1):
-        time.sleep(5)
-        if len(error_genes) > 0:
-            UniProtId_dict_2, error_genes = await _async_request(error_genes, taxid=taxid)
-            UniProtId_dict = {**UniProtId_dict, **UniProtId_dict_2}
+
+    found_previous_cycle = 0
+    found_current_cycle = len(UniProtId_dict)
+
+    while cycle < max_cycle and error_genes:
+        # Отношение found_current/found_previous для условия остановки
+        if found_previous_cycle == 0:
+            ratio = float("inf") if found_current_cycle > 0 else 1.0
         else:
+            ratio = found_current_cycle / found_previous_cycle
+
+        if ratio == 1.0:
             break
-    
-    print(f'{len(UniProtId_dict)} genes succesfully converted to UniprotIDs')
-    print(f'{len(error_genes)} genes not converted')
-    
+
+        await asyncio.sleep(retry_delay)
+        cycle += 1
+
+        found_previous_cycle = found_current_cycle
+        new_dict, error_genes = await _async_request(error_genes, taxid=taxid)
+        UniProtId_dict.update(new_dict)
+        found_current_cycle = len(UniProtId_dict)
+
+    print(f"{len(UniProtId_dict)} genes successfully converted to UniProtIDs")
+    print(f"{len(error_genes)} genes not converted")
+
     return UniProtId_dict, error_genes
+
