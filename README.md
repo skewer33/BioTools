@@ -27,6 +27,43 @@ results_df, error_ids = await get_proteins_info(
 )
 ```
 
+### MITAB_parser
+Parse a MITAB (PSI-MI TAB) table and extract interactor/protein info:
+
+```python
+import asyncio
+import pandas as pd
+
+from BioTools import MITAB_parser
+
+df = pd.read_csv("Example_IntAct.tsv", sep="\t")
+
+parser = MITAB_parser(
+    df,
+    parsing_data=["protein_id", "taxid", "publications", "detection_method"],
+)
+
+result = parser.parse()
+# Columns:
+#   UniProtID_A/B, Gene_A/B, taxid_A/B,
+#   Publications (dict {db: [ids]}), Detection_method_id, Detection_method_name
+```
+
+Available `parsing_data` options: `protein_id`, `taxid`, `publications`, `detection_method`.
+You can also call each extraction separately, e.g. `parser.get_taxid_from_mitab()`.
+
+### gene2uniprotid
+Asynchronously map gene names to UniProt IDs via the mygene.info API:
+
+```python
+import asyncio
+
+from BioTools import gene2uniprotid
+
+# returns (dict {gene: uniprot_id}, list_of_unmapped_genes)
+uniprot_map, errors = asyncio.run(gene2uniprotid(["ACTA1", "TPT1"], taxid=9606))
+```
+
 ## Modules
 - **gene2uniprot**: Functions for querying UniProt IDs based on gene names.
 - **MITAB_parser**: Class for parsing MITAB files and extracting relevant information.
